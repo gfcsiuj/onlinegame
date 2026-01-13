@@ -35,44 +35,50 @@ class MultisynqService {
   public async connect(playerName: string, color: string): Promise<string> {
     console.log(`[Multisynq] Joining room: ${APP_ID}`);
     
-    // Join the P2P room
-    const config = { appId: APP_ID };
-    this.room = joinRoom(config, 'apex-redline-lobby');
-    
-    // Setup actions
-    const [sendData, getPeerData] = this.room.makeAction('gameUpdate');
-    this.sendAction = sendData;
-    
-    // Handle self ID (Trystero doesn't expose self ID easily, so we generate a random one for logic if needed, 
-    // but we use the peer ID from the library for others)
-    this.myId = this.room.selfId;
+    try {
+      // Join the P2P room
+      const config = { appId: APP_ID };
+      this.room = joinRoom(config, 'apex-redline-lobby');
+      
+      // Setup actions
+      const [sendData, getPeerData] = this.room.makeAction('gameUpdate');
+      this.sendAction = sendData;
+      
+      // Handle self ID
+      this.myId = this.room.selfId;
 
-    // Listen for updates
-    getPeerData((data: PeerData, peerId: string) => {
-      this.peers.set(peerId, { ...data, id: peerId });
-      this.notifyPeersUpdate();
-    });
+      // Listen for updates
+      getPeerData((data: PeerData, peerId: string) => {
+        this.peers.set(peerId, { ...data, id: peerId });
+        this.notifyPeersUpdate();
+      });
 
-    // Handle peer leaving
-    this.room.onPeerLeave((peerId: string) => {
-      this.peers.delete(peerId);
-      this.notifyPeersUpdate();
-    });
+      // Handle peer leaving
+      this.room.onPeerLeave((peerId: string) => {
+        this.peers.delete(peerId);
+        this.notifyPeersUpdate();
+      });
 
-    // Handle peer joining
-    this.room.onPeerJoin((peerId: string) => {
-      console.log(`Peer joined: ${peerId}`);
-      // Immediately send our state so they know we exist
-      // We will do this in the game loop mainly
-    });
+      // Handle peer joining
+      this.room.onPeerJoin((peerId: string) => {
+        console.log(`Peer joined: ${peerId}`);
+      });
 
-    return this.myId;
+      return this.myId;
+    } catch (e) {
+      console.error("Multisynq connection error:", e);
+      throw new Error("Failed to initialize P2P network");
+    }
   }
 
   public broadcastState(data: Omit<PeerData, 'id'>) {
     if (this.sendAction) {
-      // Send raw data directly to all peers
-      this.sendAction(data);
+      try {
+        // Send raw data directly to all peers
+        this.sendAction(data);
+      } catch (e) {
+        // Suppress send errors to prevent game loop lag
+      }
     }
   }
 
