@@ -141,7 +141,7 @@ const App = () => {
              .animate-loading-bar {
                animation: loading-bar 1.5s infinite linear;
              }
-           `}</style>
+           `}</style> 
         </div>
       )}
 
